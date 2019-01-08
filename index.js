@@ -34,7 +34,7 @@ app.get('/github-pro/:id', async (req, res) => {
     jimp.read('pro_banner.png')
   ])
     .then(([profileImage, banner]) => {
-      profileImage.composite(banner, 0, 300);
+      profileImage.resize(400, 400).composite(banner, 0, 300);
       return profileImage.writeAsync(`${id}_result.jpeg`);
     })
     .then(() => {
