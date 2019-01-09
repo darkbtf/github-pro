@@ -16,31 +16,40 @@ app.get('/github-pro/:id', async (req, res) => {
 
   console.log(id);
 
-  try {
-    const { status: profileStatus, data: profileHtml } = await axios.get(profileUrl);
+  const originalFilePath = `${id}.jpeg`;
+  const resultFilePath = `${id}_result.jpeg`;
 
-    const $ = cheerio.load(profileHtml);
-    const imgUrl = $('a.u-photo.d-block').attr('href');
+  if (fs.existsSync(resultFilePath)) {
+    res.download(resultFilePath, 'result.jpeg');
+  } else {
 
-    const { status: imageStatus, data: imageRaw } = await axios.get(imgUrl, { responseType: 'arraybuffer' });
+    try {
+      const { status: profileStatus, data: profileHtml } = await axios.get(profileUrl);
 
-    fs.writeFileSync(`${id}.jpeg`, imageRaw);
-  } catch (err) {
-    console.log(err);
+      const $ = cheerio.load(profileHtml);
+      const imgUrl = $('a.u-photo.d-block').attr('href');
+
+      const { status: imageStatus, data: imageRaw } = await axios.get(imgUrl, { responseType: 'arraybuffer' });
+
+      fs.writeFileSync(originalFilePath, imageRaw);
+
+    } catch (err) {
+      console.log(err);
+    }
+
+    Promise.all([
+      jimp.read(`${id}.jpeg`),
+      jimp.read('pro_banner.png')
+    ])
+      .then(([profileImage, banner]) => {
+        profileImage.resize(400, 400).composite(banner, 0, 300);
+        return profileImage.writeAsync(resultFilePath);
+      })
+      .then(() => {
+        res.download(resultFilePath, 'result.jpeg');
+      })
+      .catch(console.log);
   }
-
-  Promise.all([
-    jimp.read(`${id}.jpeg`),
-    jimp.read('pro_banner.png')
-  ])
-    .then(([profileImage, banner]) => {
-      profileImage.resize(400, 400).composite(banner, 0, 300);
-      return profileImage.writeAsync(`${id}_result.jpeg`);
-    })
-    .then(() => {
-      res.download(`${id}_result.jpeg`, 'result.jpeg');
-    })
-    .catch(console.log);
 });
 
 app.listen(4000);
